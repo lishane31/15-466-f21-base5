@@ -10,18 +10,20 @@
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include "glm/gtx/string_cast.hpp"
 
 #include <random>
+using namespace std;
 
 GLuint phonebank_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > phonebank_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-	MeshBuffer const *ret = new MeshBuffer(data_path("phone-bank.pnct"));
+	MeshBuffer const *ret = new MeshBuffer(data_path("city.pnct"));
 	phonebank_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
 Load< Scene > phonebank_scene(LoadTagDefault, []() -> Scene const * {
-	return new Scene(data_path("phone-bank.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+	return new Scene(data_path("city.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
 		Mesh const &mesh = phonebank_meshes->lookup(mesh_name);
 
 		scene.drawables.emplace_back(transform);
@@ -39,8 +41,10 @@ Load< Scene > phonebank_scene(LoadTagDefault, []() -> Scene const * {
 
 WalkMesh const *walkmesh = nullptr;
 Load< WalkMeshes > phonebank_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
-	WalkMeshes *ret = new WalkMeshes(data_path("phone-bank.w"));
+	WalkMeshes *ret = new WalkMeshes(data_path("city.w"));
+	cout << "# meshes loaded: " << ret->meshes.size() << endl;
 	walkmesh = &ret->lookup("WalkMesh");
+	cout << "# triangles loaded: " << walkmesh->triangles.size() << endl;
 	return ret;
 });
 
@@ -65,7 +69,7 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
 
 	//start player walking at nearest walk point:
 	player.at = walkmesh->nearest_walk_point(player.transform->position);
-
+	cout << "player start " << player.at.weights.x << " " <<player.at.weights.y << " " <<player.at.weights.z << endl;
 }
 
 PlayMode::~PlayMode() {
@@ -137,8 +141,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
+	cout << player.at.indices[0] << " " << player.at.indices[1] <<  " " << player.at.indices[2] << endl;
 	//player walking:
 	{
+		//cout << player.at.indices[0] << " " << player.at.indices[1] << " " << player.at.indices[2] << endl;
 		//combine inputs into a move:
 		constexpr float PlayerSpeed = 3.0f;
 		glm::vec2 move = glm::vec2(0.0f);
@@ -160,7 +166,10 @@ void PlayMode::update(float elapsed) {
 			WalkPoint end;
 			float time;
 			walkmesh->walk_in_triangle(player.at, remain, &end, &time);
+
 			player.at = end;
+			cout <<"2 " << player.at.indices[0] << " " << player.at.indices[1] <<  " " << player.at.indices[2] << endl;
+
 			if (time == 1.0f) {
 				//finished within triangle:
 				remain = glm::vec3(0.0f);
@@ -248,7 +257,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
 
-	scene.draw(*player.camera);
+	scene.draw(*player.camera, player.transform->position);
 
 	{ //use DrawLines to overlay some text:
 		glDisable(GL_DEPTH_TEST);
@@ -271,5 +280,22 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 	}
+	glDisable(GL_DEPTH_TEST);
+	{
+		DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
+		for (int i = 0; i < walkmesh->triangles.size(); i++) {
+			auto const &tri = walkmesh->triangles[i];
+			
+			int want_to_draw = 2;
+			//if(tri.x != want_to_draw && tri.y != want_to_draw && tri.z != want_to_draw)	continue;
+			
+			lines.draw(walkmesh->vertices[tri.x], walkmesh->vertices[tri.y], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
+			lines.draw(walkmesh->vertices[tri.y], walkmesh->vertices[tri.z], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
+			lines.draw(walkmesh->vertices[tri.z], walkmesh->vertices[tri.x], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
+		}
+	}
+	glEnable(GL_DEPTH_TEST);
+
+
 	GL_ERRORS();
 }

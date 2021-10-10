@@ -1,18 +1,18 @@
 
-BLENDER="C:\Program Files\Blender Foundation\Blender 2.90\blender.exe"
+BLENDER="D:\Blender\blender.exe"
 DIST=../dist
 
 all : \
-    $(DIST)/phone-bank.pnct \
-    $(DIST)/phone-bank.scene \
-    $(DIST)/phone-bank.w \
+    $(DIST)/city.pnct \
+    $(DIST)/city.scene \
+    $(DIST)/city.w \
 
 
-$(DIST)/phone-bank.scene : phone-bank.blend export-scene.py
-    $(BLENDER) --background --python export-scene.py -- "phone-bank.blend:Platforms" "$(DIST)/phone-bank.scene"
+$(DIST)/city.scene : city.blend export-scene.py
+    $(BLENDER) --background --python export-scene.py -- "city.blend" "$(DIST)/city.scene"
 
-$(DIST)/phone-bank.pnct : phone-bank.blend export-meshes.py
-    $(BLENDER) --background --python export-meshes.py -- "phone-bank.blend:Platforms" "$(DIST)/phone-bank.pnct" 
+$(DIST)/city.pnct : city.blend export-meshes.py
+    $(BLENDER) --background --python export-meshes.py -- "city.blend" "$(DIST)/city.pnct" 
 
-$(DIST)/phone-bank.w : phone-bank.blend export-walkmeshes.py
-    $(BLENDER) --background --python export-walkmeshes.py -- "phone-bank.blend:WalkMeshes" "$(DIST)/phone-bank.w" 
+$(DIST)/city.w : city.blend export-walkmeshes.py
+    $(BLENDER) --background --python export-walkmeshes.py -- "city.blend:WalkMeshes" "$(DIST)/city.w" 

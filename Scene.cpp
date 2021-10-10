@@ -80,14 +80,14 @@ glm::mat4 Scene::Camera::make_projection() const {
 //-------------------------
 
 
-void Scene::draw(Camera const &camera) const {
+void Scene::draw(Camera const &camera, glm::vec3 const &position) const {
 	assert(camera.transform);
 	glm::mat4 world_to_clip = camera.make_projection() * glm::mat4(camera.transform->make_world_to_local());
 	glm::mat4x3 world_to_light = glm::mat4x3(1.0f);
-	draw(world_to_clip, world_to_light);
+	draw(world_to_clip, world_to_light, position);
 }
 
-void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light) const {
+void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light, glm::vec3 const &position) const {
 
 	//Iterate through all drawables, sending each one to OpenGL:
 	for (auto const &drawable : drawables) {
@@ -118,6 +118,11 @@ void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_lig
 		if (pipeline.OBJECT_TO_CLIP_mat4 != -1U) {
 			glm::mat4 object_to_clip = world_to_clip * glm::mat4(object_to_world);
 			glUniformMatrix4fv(pipeline.OBJECT_TO_CLIP_mat4, 1, GL_FALSE, glm::value_ptr(object_to_clip));
+		}
+
+		//PLAYER_POS_vec3 
+		if (pipeline.PLAYER_POS_vec3 != -1U) {
+			glUniform3fv(pipeline.PLAYER_POS_vec3, 1, glm::value_ptr(position));
 		}
 
 		//the object-to-light matrix is used in the next two uniforms:
