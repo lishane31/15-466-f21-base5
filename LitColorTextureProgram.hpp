@@ -21,6 +21,7 @@ struct LitColorTextureProgram {
 	GLuint OBJECT_TO_CLIP_mat4 = -1U;
 	GLuint OBJECT_TO_LIGHT_mat4x3 = -1U;
 	GLuint NORMAL_TO_LIGHT_mat3 = -1U;
+	GLuint PLAYER_POS_vec3 = -1U;
 
 	//lighting:
 	GLuint LIGHT_TYPE_int = -1U;

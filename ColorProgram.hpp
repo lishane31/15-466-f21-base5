@@ -14,6 +14,8 @@ struct ColorProgram {
 	GLuint Color_vec4 = -1U;
 	//Uniform (per-invocation variable) locations:
 	GLuint OBJECT_TO_CLIP_mat4 = -1U;
+	GLuint CLIP_mat4 = -1U;
+	GLuint PLAYER_POS_vec3 = -1U;
 	//Textures:
 	// none
 };

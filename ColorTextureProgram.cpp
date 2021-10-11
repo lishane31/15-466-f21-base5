@@ -11,6 +11,7 @@ ColorTextureProgram::ColorTextureProgram() {
 		//vertex shader:
 		"#version 330\n"
 		"uniform mat4 OBJECT_TO_CLIP;\n"
+		"uniform vec3 PLAYER_POS;\n"
 		"in vec4 Position;\n"
 		"in vec4 Color;\n"
 		"in vec2 TexCoord;\n"
@@ -18,7 +19,16 @@ ColorTextureProgram::ColorTextureProgram() {
 		"out vec2 texCoord;\n"
 		"void main() {\n"
 		"	gl_Position = OBJECT_TO_CLIP * Position;\n"
-		"	color = Color;\n"
+		"	float dist_x = PLAYER_POS.x - Position.x/Position.w;\n"
+		"	float dist_y = PLAYER_POS.y - Position.y/Position.w;\n"
+		"	float dist_z = PLAYER_POS.z - Position.z/Position.w;\n"
+		"	float distance = sqrt(dist_x * dist_x + dist_y * dist_y + dist_z * dist_z);\n"
+		"	if(distance < 2) {\n"
+		"		color = Color;\n"
+		"	}\n"
+		"	else {\n"
+		"		color = vec4(0.25, 0.25, 0.25, 0.25);\n"
+		"	}\n"
 		"	texCoord = TexCoord;\n"
 		"}\n"
 	,
@@ -43,6 +53,7 @@ ColorTextureProgram::ColorTextureProgram() {
 	//look up the locations of uniforms:
 	OBJECT_TO_CLIP_mat4 = glGetUniformLocation(program, "OBJECT_TO_CLIP");
 	GLuint TEX_sampler2D = glGetUniformLocation(program, "TEX");
+	PLAYER_POS_vec3 = glGetUniformLocation(program, "PLAYER_POS");
 
 	//set TEX to always refer to texture binding zero:
 	glUseProgram(program); //bind program -- glUniform* calls refer to this program now

@@ -67,6 +67,7 @@ struct Scene {
 
 			//uniforms:
 			GLuint OBJECT_TO_CLIP_mat4 = -1U; //uniform location for object to clip space matrix
+			GLuint CLIP_mat4 = -1U; //uniform location for clip space matrix
 			GLuint OBJECT_TO_LIGHT_mat4x3 = -1U; //uniform location for object to light space (== world space) matrix
 			GLuint NORMAL_TO_LIGHT_mat3 = -1U; //uniform location for normal to light space (== world space) matrix
 			GLuint PLAYER_POS_vec3 = -1U;

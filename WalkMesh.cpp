@@ -23,7 +23,7 @@ WalkMesh::WalkMesh(std::vector< glm::vec3 > const &vertices_, std::vector< glm::
 	};
 	int count = 0;
 	for (auto const &tri : triangles) {
-		cout << count << " " << tri.x << " " << tri.y << " " << tri.z << endl;
+		//cout << count << " " << tri.x << " " << tri.y << " " << tri.z << endl;
 		count++;
 		do_next(tri.x, tri.y, tri.z);
 		do_next(tri.y, tri.z, tri.x);
@@ -209,39 +209,94 @@ void WalkMesh::walk_in_triangle(WalkPoint const &start, glm::vec3 const &step, W
 		time = 1;
 	}
 
-	cout << "walk tri" << endl;
+	// cout << "walk tri" << endl;
 
-	cout << "START WEIGHTS " << start.weights[0] << " " << start.weights[1] << " " << start.weights[2] << std::endl;
-	cout << "END WEIGHTS " << end_weights[0] << " " << end_weights[1] << " " << end_weights[2] << std::endl;
-	cout << "TIME " << ta << " " << tb << " " << tc << std::endl;
-	cout << "VEL " << b_vel[0] << " " << b_vel[1] << " " << b_vel[2] << std::endl;
-	cout << "MIN " << min << endl;
-	cout << "final weights " << end.weights.x << " " <<  end.weights.y << " " <<  end.weights.z << endl;
-	cout << "final indices " << end.indices.x << " " <<  end.indices.y << " " <<  end.indices.z << endl;
-	cout << "end walk tri" << endl;
+	// cout << "START WEIGHTS " << start.weights[0] << " " << start.weights[1] << " " << start.weights[2] << std::endl;
+	// cout << "END WEIGHTS " << end_weights[0] << " " << end_weights[1] << " " << end_weights[2] << std::endl;
+	// cout << "TIME " << ta << " " << tb << " " << tc << std::endl;
+	// cout << "VEL " << b_vel[0] << " " << b_vel[1] << " " << b_vel[2] << std::endl;
+	// cout << "MIN " << min << endl;
+	// cout << "final weights " << end.weights.x << " " <<  end.weights.y << " " <<  end.weights.z << endl;
+	// cout << "final indices " << end.indices.x << " " <<  end.indices.y << " " <<  end.indices.z << endl;
+	// cout << "end walk tri" << endl;
 }
 
-bool WalkMesh::cross_edge(WalkPoint const &start, WalkPoint *end_, glm::quat *rotation_) const {
+bool WalkMesh::cross_edge(
+	WalkPoint const &start, //[in] walkpoint on triangle edge
+	WalkPoint *end_,         //[out] end walkpoint, having crossed edge
+	glm::quat *rotation_,     //[out] rotation over edge
+	std::unordered_map< glm::uvec2, std::vector<uint32_t> > *walked_on_
+) const {
 	assert(end_);
 	auto &end = *end_;
 
 	assert(rotation_);
 	auto &rotation = *rotation_;
 
+	auto &walked_on = *walked_on_;
+
 	assert(start.weights.z == 0.0f); //*must* be on an edge.
 
 
 	// check if edge (start.indices.x, start.indices.y) has a triangle on the other side:
-	cout << "Attempting to cross edge " << start.indices.x << " " << start.indices.y << endl;
+	//cout << "Attempting to cross edge " << start.indices.x << " " << start.indices.y << endl;
 
 	glm::uvec2 edge = glm::uvec2(start.indices.y, start.indices.x);
 	auto next_edge = next_vertex.find(edge);
 	if(next_edge == next_vertex.end())
 		return false;
 	
-	cout << vertices.size() << endl;
+	//cout << vertices.size() << endl;
 	cout << "Crossing from " << start.indices.x << " " << start.indices.y << " " << start.indices.z << " to " << start.indices.y << " " << start.indices.x << " " << (int)next_edge->second << endl;
-	
+	auto min_med_max = [](uint32_t a, uint32_t b, uint32_t c) {
+		if(min(a, min(b, c)) == a) {
+			return glm::uvec3(a, min(b, c), max(b, c));
+		}
+		else if(min(a, min(b, c)) == b) {
+			return glm::uvec3(b, min(a, c), max(a, c));
+		}
+		else {
+			return glm::uvec3(c, min(a, b), max(a, b));
+		}
+	};
+
+	auto next_tri = min_med_max(start.indices.y, start.indices.x, next_edge->second);
+	cout << "Sorted next tri " << next_tri.x << " " << next_tri.y << " " << next_tri.z << endl;
+	auto to_find = glm::uvec2(next_tri.x, next_tri.y);
+	auto it = walked_on.find(to_find);
+	bool found = false;
+
+	//This edge pair is found
+	if(it != walked_on.end()) {
+		cout << "found" << endl;
+		//If the triangle is already walked on, remove it
+		vector< uint32_t > new_vec;
+		for(auto &third_vertex : it->second) {
+			cout << third_vertex << " " << next_tri.z << endl;
+			if(third_vertex != next_tri.z) {
+				new_vec.emplace_back(third_vertex);
+			}
+			else {
+				found = true;
+			}
+		}
+
+		//Found, but the triangle is not already walked on
+		if(found == false) {
+			new_vec.emplace_back(next_tri.z);
+		}
+
+		walked_on.erase(to_find);
+		walked_on[to_find] = new_vec;
+	}
+	//Didn't find it, create vector and insert
+	else {
+		std::vector<uint32_t> vec;
+		vec.emplace_back(next_tri.z);
+		auto ret = walked_on.insert(std::make_pair(glm::uvec2(next_tri.x, next_tri.y), vec));
+		assert(ret.second);
+	}
+
 	// if there is another triangle:
 	// set end's weights and indicies on that triangle:
 	end.indices = glm::vec3(start.indices.y, start.indices.x, next_edge->second);

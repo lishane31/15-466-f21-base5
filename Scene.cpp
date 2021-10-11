@@ -125,6 +125,11 @@ void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_lig
 			glUniform3fv(pipeline.PLAYER_POS_vec3, 1, glm::value_ptr(position));
 		}
 
+		//CLIP_mat4 
+		if (pipeline.CLIP_mat4 != -1U) {
+			glUniformMatrix4fv(pipeline.CLIP_mat4, 1, GL_FALSE, glm::value_ptr(world_to_clip));
+		}
+
 		//the object-to-light matrix is used in the next two uniforms:
 		glm::mat4x3 object_to_light = world_to_light * glm::mat4(object_to_world);
 

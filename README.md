@@ -1,18 +1,24 @@
-# (TODO: your game's title)
+# Fade
 
-Author: (TODO: your name)
+Author: Siheng Li
 
-Design: (TODO: In two sentences or fewer, describe what is new and interesting about your game.)
+Design: You are trying to map out a city using chalk (obvious vandalism),
+but darn, your eyes are really bad (even though it can see through buildings)
+and you can only see where you have drawn chalk if it is close to you :(
+Try to draw chalk on all 128 triangles (which I am pretty sure is actually not possible).
 
 Screen Shot:
 
 ![Screen Shot](screenshot.png)
 
 How To Play:
+Just walk around, if you step on a new tile it will light up,
+step on it again and it will disappear. Try to find a single path
+that doesn't double cross and hits all triangles.
 
-(TODO: describe the controls and (if needed) goals/strategy.)
-
-Sources: (TODO: list a source URL for any assets you did not create yourself. Make sure you have a license for the asset.)
+Sources: 
+ city.blend -- Jim McCann
+ Thomas on Discord
 
 This game was built with [NEST](NEST.md).
 

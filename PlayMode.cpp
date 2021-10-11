@@ -26,6 +26,9 @@ Load< Scene > phonebank_scene(LoadTagDefault, []() -> Scene const * {
 	return new Scene(data_path("city.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
 		Mesh const &mesh = phonebank_meshes->lookup(mesh_name);
 
+		if(mesh_name.compare("WalkMesh") == 0)
+			return;
+
 		scene.drawables.emplace_back(transform);
 		Scene::Drawable &drawable = scene.drawables.back();
 
@@ -69,6 +72,25 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
 
 	//start player walking at nearest walk point:
 	player.at = walkmesh->nearest_walk_point(player.transform->position);
+
+	auto min_med_max = [](uint32_t a, uint32_t b, uint32_t c) {
+		if(min(a, min(b, c)) == a) {
+			return glm::uvec3(a, min(b, c), max(b, c));
+		}
+		else if(min(a, min(b, c)) == b) {
+			return glm::uvec3(b, min(a, c), max(a, c));
+		}
+		else {
+			return glm::uvec3(c, min(a, b), max(a, b));				
+		}
+	};
+
+	auto next_tri = min_med_max(player.at.indices.x, player.at.indices.y, player.at.indices.z);
+
+	std::vector<uint32_t> vec;
+	vec.emplace_back(next_tri.z);
+	auto ret = walked_on.insert(std::make_pair(glm::uvec2(next_tri.x, next_tri.y), vec));
+	assert(ret.second);
 	cout << "player start " << player.at.weights.x << " " <<player.at.weights.y << " " <<player.at.weights.z << endl;
 }
 
@@ -141,7 +163,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
-	cout << player.at.indices[0] << " " << player.at.indices[1] <<  " " << player.at.indices[2] << endl;
+	//cout << player.at.indices[0] << " " << player.at.indices[1] <<  " " << player.at.indices[2] << endl;
 	//player walking:
 	{
 		//cout << player.at.indices[0] << " " << player.at.indices[1] << " " << player.at.indices[2] << endl;
@@ -168,7 +190,6 @@ void PlayMode::update(float elapsed) {
 			walkmesh->walk_in_triangle(player.at, remain, &end, &time);
 
 			player.at = end;
-			cout <<"2 " << player.at.indices[0] << " " << player.at.indices[1] <<  " " << player.at.indices[2] << endl;
 
 			if (time == 1.0f) {
 				//finished within triangle:
@@ -179,7 +200,7 @@ void PlayMode::update(float elapsed) {
 			remain *= (1.0f - time);
 			//try to step over edge:
 			glm::quat rotation;
-			if (walkmesh->cross_edge(player.at, &end, &rotation)) {
+			if (walkmesh->cross_edge(player.at, &end, &rotation, &walked_on)) {
 				//stepped to a new triangle:
 				player.at = end;
 				//rotate step to follow surface:
@@ -257,7 +278,59 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
 
-	scene.draw(*player.camera, player.transform->position);
+	//Pass in the player's world space coordinates
+	scene.draw(*player.camera, player.transform->make_local_to_world() *  glm::vec4(player.transform->position, 1.0f));
+
+	int walked = 0;
+	glDisable(GL_DEPTH_TEST);
+	{
+		DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
+		for (int i = 0; i < walkmesh->triangles.size(); i++) {
+			auto const &tri = walkmesh->triangles[i];
+			
+			auto min_med_max = [](uint32_t a, uint32_t b, uint32_t c) {
+				if(min(a, min(b, c)) == a) {
+					return glm::uvec3(a, min(b, c), max(b, c));
+				}
+				else if(min(a, min(b, c)) == b) {
+					return glm::uvec3(b, min(a, c), max(a, c));
+				}
+				else {
+					return glm::uvec3(c, min(a, b), max(a, b));				
+				}
+			};
+
+			auto next_tri = min_med_max(tri.x, tri.y, tri.z);
+			auto to_find = glm::uvec2(next_tri.x, next_tri.y);
+			auto it = walked_on.find(to_find);
+
+			float dist_x = walkmesh->vertices[tri.x].x - walkmesh->vertices[player.at.indices.x].x;
+			float dist_z = walkmesh->vertices[tri.x].z - walkmesh->vertices[player.at.indices.x].z;
+			dist_x += walkmesh->vertices[tri.y].x - walkmesh->vertices[player.at.indices.y].x;
+			dist_z += walkmesh->vertices[tri.y].z - walkmesh->vertices[player.at.indices.y].z;
+			dist_x += walkmesh->vertices[tri.z].x - walkmesh->vertices[player.at.indices.z].x;
+			dist_z += walkmesh->vertices[tri.z].z - walkmesh->vertices[player.at.indices.z].z;
+
+			dist_x /= 3.0f;
+			dist_z /= 3.0f;
+
+			float dist = dist_x * dist_x + dist_z * dist_z;
+			uint16_t color = uint16_t(max(0.0f, 255 - dist * 3.0f));
+			//cout << dist << " " << color << endl;
+
+			for(auto &third : it->second) {
+				if(it != walked_on.end() && third == next_tri.z) {
+					walked++;
+					if(color > 0) {
+						lines.draw(walkmesh->vertices[tri.x], walkmesh->vertices[tri.y], glm::u8vec4(color, color, color, 0xff));
+						lines.draw(walkmesh->vertices[tri.y], walkmesh->vertices[tri.z], glm::u8vec4(color, color, color, 0xff));
+						lines.draw(walkmesh->vertices[tri.z], walkmesh->vertices[tri.x], glm::u8vec4(color, color, color, 0xff));
+					}
+				}
+			}
+		}
+	}
+	glEnable(GL_DEPTH_TEST);
 
 	{ //use DrawLines to overlay some text:
 		glDisable(GL_DEPTH_TEST);
@@ -270,32 +343,16 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		));
 
 		constexpr float H = 0.09f;
-		lines.draw_text("Mouse motion looks; WASD moves; escape ungrabs mouse",
+		lines.draw_text("There are 128 triangles total, you've found: " + to_string(walked),
 			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion looks; WASD moves; escape ungrabs mouse",
+		lines.draw_text("There are 128 triangles total, you've found: " + to_string(walked),
 			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 	}
-	glDisable(GL_DEPTH_TEST);
-	{
-		DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
-		for (int i = 0; i < walkmesh->triangles.size(); i++) {
-			auto const &tri = walkmesh->triangles[i];
-			
-			int want_to_draw = 2;
-			//if(tri.x != want_to_draw && tri.y != want_to_draw && tri.z != want_to_draw)	continue;
-			
-			lines.draw(walkmesh->vertices[tri.x], walkmesh->vertices[tri.y], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-			lines.draw(walkmesh->vertices[tri.y], walkmesh->vertices[tri.z], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-			lines.draw(walkmesh->vertices[tri.z], walkmesh->vertices[tri.x], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-		}
-	}
-	glEnable(GL_DEPTH_TEST);
-
 
 	GL_ERRORS();
 }
