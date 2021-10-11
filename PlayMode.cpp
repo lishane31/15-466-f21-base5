@@ -285,7 +285,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glDisable(GL_DEPTH_TEST);
 	{
 		DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
-		for (int i = 0; i < walkmesh->triangles.size(); i++) {
+		for (size_t i = 0; i < walkmesh->triangles.size(); i++) {
 			auto const &tri = walkmesh->triangles[i];
 			
 			auto min_med_max = [](uint32_t a, uint32_t b, uint32_t c) {
